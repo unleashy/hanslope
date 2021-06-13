@@ -1,0 +1,7 @@
+{
+  "extends": "rollpkg/configs/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "noUncheckedIndexedAccess": true
+  }
+}
