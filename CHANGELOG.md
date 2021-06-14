@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Added
 
-- Basic parsers: `str`, `re`, `or`, `seq`, `many`, `many1`, `maybe`, `tag`
+- Basic parsers: `any`, `str`, `re`, `or`, `seq`, `many`, `many1`, `maybe`,
+  `tag`
 - `cstToAst` transforms a CST to an AST
 
 [unreleased]: https://github.com/unleashy/vahv/compare/v0.1.0...HEAD

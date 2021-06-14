@@ -1,4 +1,5 @@
 import {
+  any,
   CSTMany,
   CSTNode,
   CSTSeq,
@@ -16,6 +17,17 @@ import {
   str,
   tag
 } from "../src";
+
+describe("any", () => {
+  it("matches any single character", () => {
+    expect(any("ab")).toEqual(matched("a", "b"));
+    expect(any(" ")).toEqual(matched(" ", ""));
+  });
+
+  it("fails if the input is empty", () => {
+    expect(any("")).toEqual(notMatched());
+  });
+});
 
 describe("str", () => {
   describe("given an empty string", () => {

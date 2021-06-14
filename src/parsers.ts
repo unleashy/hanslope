@@ -43,6 +43,14 @@ export type Result<T extends CSTNode> = Matched<T> | NotMatched;
 
 export type Parser<T extends CSTNode> = (input: string) => Result<T>;
 
+export function any(input: string): Result<string> {
+  if (input.length > 0) {
+    return matched(input[0] as string, input.slice(1));
+  } else {
+    return notMatched();
+  }
+}
+
 export function str(s: string): Parser<string> {
   return input => {
     const trimmed = input.trimStart();
