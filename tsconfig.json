@@ -1,6 +1,7 @@
 {
   "extends": "rollpkg/configs/tsconfig.json",
   "compilerOptions": {
+    "target": "ES2019",
     "allowJs": false,
     "noUncheckedIndexedAccess": true
   }
