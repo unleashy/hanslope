@@ -1,4 +1,4 @@
-import { matched, notMatched, or, Parser, re, seq, str } from "../src";
+import { many, matched, notMatched, or, Parser, re, seq, str } from "../src";
 
 describe("str", () => {
   describe("given an empty string", () => {
@@ -106,6 +106,35 @@ describe("seq", () => {
 
       expect(sut("")).toEqual(notMatched());
       expect(calls).toEqual(["matchingP", "failingP"]);
+    });
+  });
+});
+
+describe("many", () => {
+  describe("given a single parser", () => {
+    it("calls it until failure", () => {
+      const calls: string[] = [];
+      const p: Parser<string> = input => {
+        calls.push(input);
+        return input.length > 0
+          ? matched(input[0] ?? "", input.slice(1))
+          : notMatched();
+      };
+      const sut = many(p);
+
+      expect(sut("abc")).toEqual(
+        matched({ type: "many", children: ["a", "b", "c"] }, "")
+      );
+      expect(calls).toEqual(["abc", "bc", "c", ""]);
+    });
+
+    it("succeeds even if the first match fails", () => {
+      const p: Parser<string> = () => notMatched();
+      const sut = many(p);
+
+      expect(sut("abc")).toEqual(
+        matched({ type: "many", children: [] }, "abc")
+      );
     });
   });
 });

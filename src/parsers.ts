@@ -5,7 +5,12 @@ export interface CSTSeq {
   children: [CSTNode, CSTNode, ...CSTNode[]];
 }
 
-export type CSTNode = CSTLeaf | CSTSeq;
+export interface CSTMany {
+  type: "many";
+  children: CSTNode[];
+}
+
+export type CSTNode = CSTLeaf | CSTSeq | CSTMany;
 
 interface Matched<T extends CSTNode> {
   readonly matched: true;
@@ -94,5 +99,23 @@ export function seq<Ps extends TwoOrMoreParsers>(
     }
 
     return matched({ type: "seq", children } as CSTSeq, currentInput);
+  };
+}
+
+export function many<T extends CSTNode>(parser: Parser<T>): Parser<CSTMany> {
+  return input => {
+    let currentInput = input;
+    const children: CSTNode[] = [];
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const result = parser(currentInput);
+      if (!result.matched) break;
+
+      currentInput = result.rest;
+      children.push(result.output);
+    }
+
+    return matched({ type: "many", children }, currentInput);
   };
 }
