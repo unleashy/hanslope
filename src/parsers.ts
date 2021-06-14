@@ -1,4 +1,11 @@
-export type CSTNode = string | null;
+export type CSTLeaf = string | null;
+
+export interface CSTSeq {
+  type: "seq";
+  children: [CSTNode, CSTNode, ...CSTNode[]];
+}
+
+export type CSTNode = CSTLeaf | CSTSeq;
 
 interface Matched<T extends CSTNode> {
   readonly matched: true;
@@ -67,5 +74,25 @@ export function or<Ps extends TwoOrMoreParsers>(
     }
 
     return notMatched();
+  };
+}
+
+export function seq<Ps extends TwoOrMoreParsers>(
+  ...parsers: Ps
+): Parser<CSTSeq> {
+  return input => {
+    let currentInput = input;
+    const children = [];
+    for (const parser of parsers) {
+      const result = parser(currentInput);
+      if (!result.matched) {
+        return notMatched();
+      }
+
+      currentInput = result.rest;
+      children.push(result.output);
+    }
+
+    return matched({ type: "seq", children } as CSTSeq, currentInput);
   };
 }

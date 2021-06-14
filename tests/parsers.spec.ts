@@ -1,4 +1,4 @@
-import { matched, notMatched, or, Parser, re, str } from "../src";
+import { matched, notMatched, or, Parser, re, seq, str } from "../src";
 
 describe("str", () => {
   describe("given an empty string", () => {
@@ -76,6 +76,36 @@ describe("or", () => {
       const sut = or(failingP, failingP, failingP, failingP);
 
       expect(sut("")).toEqual(notMatched());
+    });
+  });
+});
+
+describe("seq", () => {
+  describe("given two or more parsers", () => {
+    it("calls them in sequence", () => {
+      const p: Parser<string> = input =>
+        matched(input[0] ?? "", input.slice(1));
+      const sut = seq(p, p, p);
+
+      expect(sut("abc")).toEqual(
+        matched({ type: "seq", children: ["a", "b", "c"] }, "")
+      );
+    });
+
+    it("fails if any parser fails", () => {
+      const calls: string[] = [];
+      const matchingP: Parser<string> = () => {
+        calls.push("matchingP");
+        return matched("", "");
+      };
+      const failingP: Parser<string> = () => {
+        calls.push("failingP");
+        return notMatched();
+      };
+      const sut = seq(matchingP, failingP, matchingP);
+
+      expect(sut("")).toEqual(notMatched());
+      expect(calls).toEqual(["matchingP", "failingP"]);
     });
   });
 });
