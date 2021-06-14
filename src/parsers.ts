@@ -30,3 +30,16 @@ export function str(s: string): Parser<string> {
     }
   };
 }
+
+export function re(pattern: RegExp): Parser<string> {
+  return input => {
+    const trimmed = input.trimStart();
+    const result = pattern.exec(trimmed);
+    if (result?.index === 0) {
+      const match = result[0] as string;
+      return matched(match, trimmed.slice(match.length));
+    } else {
+      return notMatched();
+    }
+  };
+}

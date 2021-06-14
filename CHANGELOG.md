@@ -9,6 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Added
 
-- Basic parser: `str`
+- Basic parsers: `str`, `re`
 
 [unreleased]: https://github.com/unleashy/vahv/compare/v0.1.0...HEAD

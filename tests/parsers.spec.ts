@@ -1,4 +1,4 @@
-import { str } from "../src";
+import { re, str } from "../src";
 
 describe("str", () => {
   describe("given an empty string", () => {
@@ -31,6 +31,24 @@ describe("str", () => {
 
       expect(sut("  foobar")).toEqual(matched("foobar", ""));
       expect(sut("\f\t\r\n\vfoobar")).toEqual(matched("foobar", ""));
+    });
+  });
+});
+
+describe("re", () => {
+  describe("given a regex", () => {
+    it("matches the regex for the start of the input", () => {
+      const sut = re(/[a-z]+[0-9]{3}/);
+
+      expect(sut("abc123456")).toEqual(matched("abc123", "456"));
+      expect(sut("nope")).toEqual(notMatched());
+    });
+
+    it("trims leading whitespace", () => {
+      const sut = re(/h+ello/);
+
+      expect(sut("  hhhhhhhello123")).toEqual(matched("hhhhhhhello", "123"));
+      expect(sut("\f\t\r\n\vhello")).toEqual(matched("hello", ""));
     });
   });
 });
