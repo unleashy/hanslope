@@ -164,3 +164,48 @@ export function tag<T extends CSTNode>(
     }
   };
 }
+
+export type ASTLeaf = string | null;
+
+export type ASTCollection = ASTNode[];
+
+export interface ASTBranch {
+  [tag: string]: ASTNode;
+}
+
+export type ASTNode = ASTLeaf | ASTCollection | ASTBranch;
+
+export function cstToAst(cst: CSTNode): ASTNode {
+  function isNotLeaf(node: ASTNode): node is ASTBranch | ASTCollection {
+    return node !== null && typeof node === "object";
+  }
+
+  function isCollection(node: ASTNode): node is ASTCollection {
+    return Array.isArray(node);
+  }
+
+  function isBranch(node: ASTNode): node is ASTBranch {
+    return isNotLeaf(node) && !isCollection(node);
+  }
+
+  if (typeof cst === "string" || cst === null) {
+    return cst;
+  } else if (cst.type === "tag") {
+    return { [cst.tag]: cstToAst(cst.child) };
+  } else {
+    const children = cst.children.map(cstToAst);
+
+    const hasBranches = children.some(isBranch);
+    const hasCollections = children.some(isCollection);
+
+    if (cst.type === "seq" && hasBranches && !hasCollections) {
+      return Object.assign({}, ...children.filter(isNotLeaf)) as ASTBranch;
+    } else if (hasBranches || hasCollections) {
+      // this is perfectly fine, and i'm not sure why ESLint is annoyed at me
+      // eslint-disable-next-line
+      return children.filter(isNotLeaf).flat();
+    } else {
+      return children.join("");
+    }
+  }
+}
