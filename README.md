@@ -12,7 +12,7 @@ import { grammar } from "hanslope/macro";
 const polishNotationParser = grammar`
   Expression <- Operator:op Term+:terms
   Term       <- Number:value
-              / "(" Expression ")"
+              | "(" Expression ")"
   Operator   <- /[+\-*\/]/
   Number     <- /[0-9]+/
 `;
