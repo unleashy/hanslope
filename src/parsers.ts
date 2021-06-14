@@ -33,10 +33,11 @@ export function matched<T extends CSTNode>(
 
 interface NotMatched {
   readonly matched: false;
+  readonly label: string | null;
 }
 
-export function notMatched(): NotMatched {
-  return { matched: false };
+export function notMatched(label: string | null = null): NotMatched {
+  return { matched: false, label };
 }
 
 export type Result<T extends CSTNode> = Matched<T> | NotMatched;
@@ -87,7 +88,7 @@ export function or<Ps extends TwoOrMoreParsers>(
   return input => {
     for (const parser of parsers) {
       const result = parser(input);
-      if (result.matched) {
+      if (result.matched || result.label !== null) {
         return result;
       }
     }
@@ -105,7 +106,7 @@ export function seq<Ps extends TwoOrMoreParsers>(
     for (const parser of parsers) {
       const result = parser(currentInput);
       if (!result.matched) {
-        return notMatched();
+        return result;
       }
 
       currentInput = result.rest;
@@ -116,9 +117,7 @@ export function seq<Ps extends TwoOrMoreParsers>(
   };
 }
 
-export function many<T extends CSTNode>(
-  parser: Parser<T>
-): (input: string) => Matched<CSTMany> {
+export function many<T extends CSTNode>(parser: Parser<T>): Parser<CSTMany> {
   return input => {
     let currentInput = input;
     const children: CSTNode[] = [];
@@ -126,7 +125,13 @@ export function many<T extends CSTNode>(
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const result = parser(currentInput);
-      if (!result.matched) break;
+      if (!result.matched) {
+        if (result.label === null) {
+          break;
+        } else {
+          return result;
+        }
+      }
 
       currentInput = result.rest;
       children.push(result.output);
@@ -140,7 +145,10 @@ export function many1<T extends CSTNode>(parser: Parser<T>): Parser<CSTMany> {
   const manyParser = many(parser);
   return input => {
     const result = manyParser(input);
-    if (result.output.children.length > 0) {
+    if (
+      (result.matched && result.output.children.length > 0) ||
+      (!result.matched && result.label !== null)
+    ) {
       return result;
     } else {
       return notMatched();
@@ -151,7 +159,7 @@ export function many1<T extends CSTNode>(parser: Parser<T>): Parser<CSTMany> {
 export function maybe<T extends CSTNode>(parser: Parser<T>): Parser<T | null> {
   return input => {
     const result = parser(input);
-    if (result.matched) {
+    if (result.matched || result.label !== null) {
       return result;
     } else {
       return matched(null, input);
@@ -161,8 +169,11 @@ export function maybe<T extends CSTNode>(parser: Parser<T>): Parser<T | null> {
 
 export function not(parser: Parser<CSTNode>): Parser<null> {
   return input => {
-    if (parser(input).matched) {
+    const result = parser(input);
+    if (result.matched) {
       return notMatched();
+    } else if (result.label !== null) {
+      return result;
     } else {
       return matched(null, input);
     }
@@ -181,6 +192,10 @@ export function tag<T extends CSTNode>(
       return result;
     }
   };
+}
+
+export function fail(label: string): (input: string) => NotMatched {
+  return () => notMatched(label);
 }
 
 export type ASTLeaf = string | null;

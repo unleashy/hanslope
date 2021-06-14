@@ -16,7 +16,8 @@ import {
   re,
   seq,
   str,
-  tag
+  tag,
+  fail
 } from "../src";
 
 describe("any", () => {
@@ -107,6 +108,22 @@ describe("or", () => {
 
       expect(sut("")).toEqual(notMatched());
     });
+
+    it("immediately propagates labelled failures", () => {
+      const calls: string[] = [];
+      const failingP: Parser<null> = () => {
+        calls.push("failingP");
+        return notMatched("woops");
+      };
+      const matchingP: Parser<string> = input => {
+        calls.push("matchingP");
+        return matched("", input);
+      };
+      const sut = or(failingP, matchingP);
+
+      expect(sut("")).toEqual(notMatched("woops"));
+      expect(calls).toEqual(["failingP"]);
+    });
   });
 });
 
@@ -137,6 +154,22 @@ describe("seq", () => {
       expect(sut("")).toEqual(notMatched());
       expect(calls).toEqual(["matchingP", "failingP"]);
     });
+
+    it("immediately propagates labelled failures", () => {
+      const calls: string[] = [];
+      const failingP: Parser<null> = () => {
+        calls.push("failingP");
+        return notMatched("woops");
+      };
+      const matchingP: Parser<string> = input => {
+        calls.push("matchingP");
+        return matched("", input);
+      };
+      const sut = seq(failingP, matchingP);
+
+      expect(sut("")).toEqual(notMatched("woops"));
+      expect(calls).toEqual(["failingP"]);
+    });
   });
 });
 
@@ -166,6 +199,13 @@ describe("many", () => {
         matched({ type: "many", children: [] }, "abc")
       );
     });
+
+    it("immediately propagates labelled failures", () => {
+      const failingP: Parser<null> = () => notMatched("woops");
+      const sut = many(failingP);
+
+      expect(sut("")).toEqual(notMatched("woops"));
+    });
   });
 });
 
@@ -193,6 +233,13 @@ describe("many1", () => {
 
       expect(sut("abc")).toEqual(notMatched());
     });
+
+    it("immediately propagates labelled failures", () => {
+      const failingP: Parser<null> = () => notMatched("woops");
+      const sut = many1(failingP);
+
+      expect(sut("")).toEqual(notMatched("woops"));
+    });
   });
 });
 
@@ -205,6 +252,13 @@ describe("maybe", () => {
 
       expect(sut("a")).toEqual(matched("hello", ""));
       expect(sut("ab")).toEqual(matched(null, "ab"));
+    });
+
+    it("immediately propagates labelled failures", () => {
+      const failingP: Parser<null> = () => notMatched("woops");
+      const sut = maybe(failingP);
+
+      expect(sut("")).toEqual(notMatched("woops"));
     });
   });
 });
@@ -223,6 +277,13 @@ describe("not", () => {
       const sut = not(p);
 
       expect(sut("abc")).toEqual(notMatched());
+    });
+
+    it("immediately propagates labelled failures", () => {
+      const failingP: Parser<null> = () => notMatched("woops");
+      const sut = not(failingP);
+
+      expect(sut("")).toEqual(notMatched("woops"));
     });
   });
 });
@@ -243,6 +304,23 @@ describe("tag", () => {
       const sut = tag("hello", p);
 
       expect(sut("123")).toEqual(notMatched());
+    });
+
+    it("immediately propagates labelled failures", () => {
+      const failingP: Parser<null> = () => notMatched("woops");
+      const sut = tag("", failingP);
+
+      expect(sut("")).toEqual(notMatched("woops"));
+    });
+  });
+});
+
+describe("fail", () => {
+  describe("given a label", () => {
+    it("fails using it", () => {
+      const sut = fail("abc");
+
+      expect(sut("def")).toEqual(notMatched("abc"));
     });
   });
 });
