@@ -9,6 +9,7 @@ import {
   many1,
   matched,
   maybe,
+  not,
   notMatched,
   or,
   Parser,
@@ -204,6 +205,24 @@ describe("maybe", () => {
 
       expect(sut("a")).toEqual(matched("hello", ""));
       expect(sut("ab")).toEqual(matched(null, "ab"));
+    });
+  });
+});
+
+describe("not", () => {
+  describe("given a parser", () => {
+    it("matches if it fails, keeping the input intact", () => {
+      const p: Parser<string> = () => notMatched();
+      const sut = not(p);
+
+      expect(sut("abc")).toEqual(matched(null, "abc"));
+    });
+
+    it("fails if it matches", () => {
+      const p: Parser<string> = () => matched("abc", "def");
+      const sut = not(p);
+
+      expect(sut("abc")).toEqual(notMatched());
     });
   });
 });

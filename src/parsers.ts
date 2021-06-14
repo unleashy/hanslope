@@ -159,6 +159,16 @@ export function maybe<T extends CSTNode>(parser: Parser<T>): Parser<T | null> {
   };
 }
 
+export function not(parser: Parser<CSTNode>): Parser<null> {
+  return input => {
+    if (parser(input).matched) {
+      return notMatched();
+    } else {
+      return matched(null, input);
+    }
+  };
+}
+
 export function tag<T extends CSTNode>(
   tag: string,
   parser: Parser<T>
