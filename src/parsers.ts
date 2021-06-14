@@ -133,3 +133,14 @@ export function many1<T extends CSTNode>(parser: Parser<T>): Parser<CSTMany> {
     }
   };
 }
+
+export function maybe<T extends CSTNode>(parser: Parser<T>): Parser<T | null> {
+  return input => {
+    const result = parser(input);
+    if (result.matched) {
+      return result;
+    } else {
+      return matched(null, input);
+    }
+  };
+}
