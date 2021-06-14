@@ -102,7 +102,9 @@ export function seq<Ps extends TwoOrMoreParsers>(
   };
 }
 
-export function many<T extends CSTNode>(parser: Parser<T>): Parser<CSTMany> {
+export function many<T extends CSTNode>(
+  parser: Parser<T>
+): (input: string) => Matched<CSTMany> {
   return input => {
     let currentInput = input;
     const children: CSTNode[] = [];
@@ -117,5 +119,17 @@ export function many<T extends CSTNode>(parser: Parser<T>): Parser<CSTMany> {
     }
 
     return matched({ type: "many", children }, currentInput);
+  };
+}
+
+export function many1<T extends CSTNode>(parser: Parser<T>): Parser<CSTMany> {
+  const manyParser = many(parser);
+  return input => {
+    const result = manyParser(input);
+    if (result.output.children.length > 0) {
+      return result;
+    } else {
+      return notMatched();
+    }
   };
 }
