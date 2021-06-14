@@ -8,7 +8,8 @@ import {
   Parser,
   re,
   seq,
-  str
+  str,
+  tag
 } from "../src";
 
 describe("str", () => {
@@ -186,6 +187,26 @@ describe("maybe", () => {
 
       expect(sut("a")).toEqual(matched("hello", ""));
       expect(sut("ab")).toEqual(matched(null, "ab"));
+    });
+  });
+});
+
+describe("tag", () => {
+  describe("given a tag and a parser", () => {
+    it("tags the result", () => {
+      const p: Parser<string> = input => matched("foo", input);
+      const sut = tag("hello", p);
+
+      expect(sut("123")).toEqual(
+        matched({ type: "tag", tag: "hello", child: "foo" }, "123")
+      );
+    });
+
+    it("does not tag failures", () => {
+      const p: Parser<string> = () => notMatched();
+      const sut = tag("hello", p);
+
+      expect(sut("123")).toEqual(notMatched());
     });
   });
 });

@@ -10,7 +10,13 @@ export interface CSTMany {
   children: CSTNode[];
 }
 
-export type CSTNode = CSTLeaf | CSTSeq | CSTMany;
+export interface CSTTagged {
+  type: "tag";
+  tag: string;
+  child: CSTNode;
+}
+
+export type CSTNode = CSTLeaf | CSTSeq | CSTMany | CSTTagged;
 
 interface Matched<T extends CSTNode> {
   readonly matched: true;
@@ -141,6 +147,20 @@ export function maybe<T extends CSTNode>(parser: Parser<T>): Parser<T | null> {
       return result;
     } else {
       return matched(null, input);
+    }
+  };
+}
+
+export function tag<T extends CSTNode>(
+  tag: string,
+  parser: Parser<T>
+): Parser<CSTTagged> {
+  return input => {
+    const result = parser(input);
+    if (result.matched) {
+      return matched({ type: "tag", tag, child: result.output }, result.rest);
+    } else {
+      return result;
     }
   };
 }
