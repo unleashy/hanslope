@@ -17,7 +17,8 @@ import {
   seq,
   str,
   tag,
-  fail
+  fail,
+  labelFail
 } from "../src";
 
 describe("any", () => {
@@ -321,6 +322,26 @@ describe("fail", () => {
       const sut = fail("abc");
 
       expect(sut("def")).toEqual(notMatched("abc"));
+    });
+  });
+});
+
+describe("labelFail", () => {
+  describe("given a parser and a label", () => {
+    it("uses the label if the parser fails", () => {
+      const p: Parser<string> = input =>
+        input === "ok" ? matched("ok", input) : notMatched();
+      const sut = labelFail(p, "rip");
+
+      expect(sut("ok")).toEqual(matched("ok", "ok"));
+      expect(sut("nope")).toEqual(notMatched("rip"));
+    });
+
+    it("immediately propagates labelled failures", () => {
+      const failingP: Parser<null> = () => notMatched("woops");
+      const sut = labelFail(failingP, "not used!");
+
+      expect(sut("")).toEqual(notMatched("woops"));
     });
   });
 });

@@ -198,6 +198,13 @@ export function fail(label: string): (input: string) => NotMatched {
   return () => notMatched(label);
 }
 
+export function labelFail<T extends CSTNode>(
+  parser: Parser<T>,
+  label: string
+): Parser<T> {
+  return or(parser, fail(label)) as Parser<T>;
+}
+
 export type ASTLeaf = string | null;
 
 export type ASTCollection = ASTNode[];
