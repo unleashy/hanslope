@@ -1,10 +1,15 @@
-interface Matched<T> {
+export type CSTNode = string | null;
+
+interface Matched<T extends CSTNode> {
   readonly matched: true;
   readonly output: T;
   readonly rest: string;
 }
 
-function matched<T>(output: T, rest: string): Matched<T> {
+export function matched<T extends CSTNode>(
+  output: T,
+  rest: string
+): Matched<T> {
   return { matched: true, output, rest };
 }
 
@@ -12,13 +17,13 @@ interface NotMatched {
   readonly matched: false;
 }
 
-function notMatched(): NotMatched {
+export function notMatched(): NotMatched {
   return { matched: false };
 }
 
-type Result<T> = Matched<T> | NotMatched;
+export type Result<T extends CSTNode> = Matched<T> | NotMatched;
 
-type Parser<T> = (input: string) => Result<T>;
+export type Parser<T extends CSTNode> = (input: string) => Result<T>;
 
 export function str(s: string): Parser<string> {
   return input => {
@@ -41,5 +46,26 @@ export function re(pattern: RegExp): Parser<string> {
     } else {
       return notMatched();
     }
+  };
+}
+
+type TwoOrMoreParsers = [
+  Parser<CSTNode>,
+  Parser<CSTNode>,
+  ...Parser<CSTNode>[]
+];
+
+export function or<Ps extends TwoOrMoreParsers>(
+  ...parsers: Ps
+): Parser<CSTNode> {
+  return input => {
+    for (const parser of parsers) {
+      const result = parser(input);
+      if (result.matched) {
+        return result;
+      }
+    }
+
+    return notMatched();
   };
 }
