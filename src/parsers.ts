@@ -118,8 +118,21 @@ export const any: Parser<string> = input => {
   }
 };
 
+/** Options for {@link str} */
+export interface StrOptions {
+  /**
+   * Whether or not to trim leading whitespace before matching
+   * @defaultValue true
+   */
+  trim?: boolean;
+}
+
 /**
- * Matches a string, trimming leading whitespace.
+ * Matches a string.
+ *
+ * @remarks
+ * By default, this will trim leading whitespace. Use {@link StrOptions.trim} to
+ * configure this.
  *
  * @example
  * ```
@@ -130,13 +143,15 @@ export const any: Parser<string> = input => {
  * abc("def");      // fails
  * ```
  * @param s - the string to match against
+ * @param options - {@link StrOptions | optional parser options}
  * @returns a parser outputting the same string given
  */
-export function str(s: string): Parser<string> {
+export function str(s: string, options?: StrOptions): Parser<string> {
+  const finalOpts = { trim: true, ...options };
   return input => {
-    const trimmed = input.trimStart();
-    if (trimmed.startsWith(s)) {
-      return matched(s, trimmed.slice(s.length));
+    const finalInput = finalOpts.trim ? input.trimStart() : input;
+    if (finalInput.startsWith(s)) {
+      return matched(s, finalInput.slice(s.length));
     } else {
       return notMatched();
     }

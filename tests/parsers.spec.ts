@@ -65,6 +65,15 @@ describe("str", () => {
       expect(sut("\f\t\r\n\vfoobar")).toEqual(matched("foobar", ""));
     });
   });
+
+  describe("given trim: false", () => {
+    it("does not trim leading whitespace", () => {
+      const sut = str("hey", { trim: false });
+
+      expect(sut("hey")).toEqual(matched("hey", ""));
+      expect(sut(" \f\t\r\n\vhey")).toEqual(notMatched());
+    });
+  });
 });
 
 describe("re", () => {
