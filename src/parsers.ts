@@ -24,7 +24,7 @@ export interface CSTMany {
 
 /**
  * A tag in the CST represents an “important” node that will be kept around by
- * {@link cstToAst} if possible.
+ * {@link cstToIst} if possible.
  */
 export interface CSTTagged {
   type: "tag";
@@ -35,8 +35,8 @@ export interface CSTTagged {
 /**
  * A *concrete syntax tree* (CST) is built by each parser combinator at the time
  * of parsing, representing the minutiae of each parser, that can then be
- * processed into a more convenient and reduced *abstract syntax tree* (AST) by
- * {@link cstToAst}.
+ * processed into the dense *intermediate syntax tree* (IST) by
+ * {@link cstToIst}.
  *
  * @remarks
  * A CST is composed of either one of {@link CSTLeaf}, {@link CSTSeq},
@@ -406,7 +406,7 @@ export function not(parser: Parser<CSTNode>): Parser<null> {
  *
  * @remarks
  * This is used when converting a {@link CSTNode | CST} to an
- * {@link ASTNode | AST}; tagged CST nodes are kept around in the AST, as
+ * {@link ISTNode | IST}; tagged CST nodes are kept around in the IST, as
  * they’re marked by you as important, whilst non-tagged nodes are swept away.
  * Propagates {@link fail | explicit failures}.
  *
@@ -467,38 +467,38 @@ export function labelFail<T extends CSTNode>(
 /**
  * A leaf, which can be a string or null.
  */
-export type ASTLeaf = string | null;
+export type ISTLeaf = string | null;
 
 /**
- * An array of {@link ASTNode}.
+ * An array of {@link ISTNode}.
  */
-export type ASTCollection = ASTNode[];
+export type ISTCollection = ISTNode[];
 
 /**
  * An object with one or more entries where the key is a string tag and the
- * value is an {@link ASTNode}.
+ * value is an {@link ISTNode}.
  *
  * @remarks
  * The tag in question is obtained via a {@link CSTTagged | tagged CST node}.
  */
-export interface ASTBranch {
-  [tag: string]: ASTNode;
+export interface ISTBranch {
+  [tag: string]: ISTNode;
 }
 
 /**
- * An *abstract syntax tree* (AST) is a basic tree-like structure representing
- * your parse.
+ * An *intermediate syntax tree* (IST) is a dense tree-like structure
+ * representing your parse.
  *
  * @remarks
- * It is composed of {@link ASTLeaf | leaves}, with no children,
- * {@link ASTCollection | arrays}, with zero or more children, and
- * {@link ASTBranch | objects}, with one or more entries. You can get an AST by
- * transforming a {@link CSTNode | CST} with {@link cstToAst}.
+ * It is composed of {@link ISTLeaf | leaves}, with no children,
+ * {@link ISTCollection | arrays}, with zero or more children, and
+ * {@link ISTBranch | objects}, with one or more entries. You can get an IST by
+ * transforming a {@link CSTNode | CST} with {@link cstToIst}.
  */
-export type ASTNode = ASTLeaf | ASTCollection | ASTBranch;
+export type ISTNode = ISTLeaf | ISTCollection | ISTBranch;
 
 /**
- * Transforms a {@link CSTNode | CST} into an {@link ASTNode | AST}.
+ * Transforms a {@link CSTNode | CST} into an {@link ISTNode | IST}.
  *
  * @remarks
  * It does this by maintaining {@link CSTTagged | tagged nodes} and throwing
@@ -508,34 +508,34 @@ export type ASTNode = ASTLeaf | ASTCollection | ASTBranch;
  * possible.
  *
  * @param cst - the CST to transform
- * @returns the transformed CST as an AST
- * @see {@link ASTNode}
+ * @returns the transformed CST as an IST
+ * @see {@link ISTNode}
  */
-export function cstToAst(cst: CSTNode): ASTNode {
-  function isNotLeaf(node: ASTNode): node is ASTBranch | ASTCollection {
+export function cstToIst(cst: CSTNode): ISTNode {
+  function isNotLeaf(node: ISTNode): node is ISTBranch | ISTCollection {
     return node !== null && typeof node === "object";
   }
 
-  function isCollection(node: ASTNode): node is ASTCollection {
+  function isCollection(node: ISTNode): node is ISTCollection {
     return Array.isArray(node);
   }
 
-  function isBranch(node: ASTNode): node is ASTBranch {
+  function isBranch(node: ISTNode): node is ISTBranch {
     return isNotLeaf(node) && !isCollection(node);
   }
 
   if (typeof cst === "string" || cst === null) {
     return cst;
   } else if (cst.type === "tag") {
-    return { [cst.tag]: cstToAst(cst.child) };
+    return { [cst.tag]: cstToIst(cst.child) };
   } else {
-    const children = cst.children.map(cstToAst);
+    const children = cst.children.map(cstToIst);
 
     const hasBranches = children.some(isBranch);
     const hasCollections = children.some(isCollection);
 
     if (cst.type === "seq" && hasBranches && !hasCollections) {
-      return Object.assign({}, ...children.filter(isNotLeaf)) as ASTBranch;
+      return Object.assign({}, ...children.filter(isNotLeaf)) as ISTBranch;
     } else if (hasBranches || hasCollections) {
       return children.filter(isNotLeaf).flat();
     } else {

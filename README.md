@@ -17,7 +17,7 @@ const polishNotationParser = grammar`
   Number     <- /[0-9]+/
 `;
 
-const ast = polishNotationParser("+ 2 (* 3 6)");
+const ist = polishNotationParser("+ 2 (* 3 6)");
 // => { op: "+",
 //      terms: [
 //        { value: "2" },

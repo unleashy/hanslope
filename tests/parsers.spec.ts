@@ -4,7 +4,7 @@ import {
   CSTNode,
   CSTSeq,
   CSTTagged,
-  cstToAst,
+  cstToIst,
   many,
   many1,
   matched,
@@ -355,7 +355,7 @@ describe("labelFail", () => {
   });
 });
 
-describe("cstToAst", () => {
+describe("cstToIst", () => {
   type CSTBranch = CSTSeq | CSTMany;
 
   function cstBranch<Type extends "seq" | "many">(
@@ -370,32 +370,32 @@ describe("cstToAst", () => {
   }
 
   it("maintains leaves", () => {
-    expect(cstToAst("a")).toEqual("a");
-    expect(cstToAst(null)).toBeNull();
+    expect(cstToIst("a")).toEqual("a");
+    expect(cstToIst(null)).toBeNull();
   });
 
   it("converts tagged leaves", () => {
-    expect(cstToAst(cstTagged("abc", "a"))).toEqual({ abc: "a" });
-    expect(cstToAst(cstTagged("foo", null))).toEqual({ foo: null });
+    expect(cstToIst(cstTagged("abc", "a"))).toEqual({ abc: "a" });
+    expect(cstToIst(cstTagged("foo", null))).toEqual({ foo: null });
   });
 
   it("joins sequences of leaves", () => {
-    expect(cstToAst(cstBranch("seq", ["a", "b"]))).toEqual("ab");
-    expect(cstToAst(cstBranch("seq", ["a", null, "c"]))).toEqual("ac");
+    expect(cstToIst(cstBranch("seq", ["a", "b"]))).toEqual("ab");
+    expect(cstToIst(cstBranch("seq", ["a", null, "c"]))).toEqual("ac");
   });
 
   it("merges sequences with tags", () => {
     expect(
-      cstToAst(cstBranch("seq", [cstTagged("a", "b"), cstTagged("b", "c")]))
+      cstToIst(cstBranch("seq", [cstTagged("a", "b"), cstTagged("b", "c")]))
     ).toEqual({ a: "b", b: "c" });
     expect(
-      cstToAst(cstBranch("seq", ["baz", cstTagged("one", "two"), null]))
+      cstToIst(cstBranch("seq", ["baz", cstTagged("one", "two"), null]))
     ).toEqual({ one: "two" });
   });
 
   it("merges nested sequences", () => {
     expect(
-      cstToAst(
+      cstToIst(
         cstBranch("seq", [
           cstBranch("seq", ["a", "b"]),
           cstBranch("seq", ["c", "d"])
@@ -406,7 +406,7 @@ describe("cstToAst", () => {
 
   it("merges nested tagged sequences", () => {
     expect(
-      cstToAst(
+      cstToIst(
         cstBranch("seq", [
           cstBranch("seq", [cstTagged("a", "1"), "b"]),
           cstBranch("seq", ["c", cstTagged("d", "2")])
@@ -416,11 +416,11 @@ describe("cstToAst", () => {
   });
 
   it("converts tagged sequences", () => {
-    expect(cstToAst(cstTagged("ab", cstBranch("seq", ["a", "b"])))).toEqual({
+    expect(cstToIst(cstTagged("ab", cstBranch("seq", ["a", "b"])))).toEqual({
       ab: "ab"
     });
     expect(
-      cstToAst(
+      cstToIst(
         cstTagged(
           "hey",
           cstBranch("seq", [cstTagged("a", "b"), cstTagged("c", "d")])
@@ -430,18 +430,18 @@ describe("cstToAst", () => {
   });
 
   it("joins many of leaves", () => {
-    expect(cstToAst(cstBranch("many", []))).toEqual("");
-    expect(cstToAst(cstBranch("many", ["a"]))).toEqual("a");
-    expect(cstToAst(cstBranch("many", ["a", "b"]))).toEqual("ab");
-    expect(cstToAst(cstBranch("many", ["a", null, "c"]))).toEqual("ac");
+    expect(cstToIst(cstBranch("many", []))).toEqual("");
+    expect(cstToIst(cstBranch("many", ["a"]))).toEqual("a");
+    expect(cstToIst(cstBranch("many", ["a", "b"]))).toEqual("ab");
+    expect(cstToIst(cstBranch("many", ["a", null, "c"]))).toEqual("ac");
   });
 
   it("keeps tagged children", () => {
-    expect(cstToAst(cstBranch("many", [cstTagged("a", "abc")]))).toEqual([
+    expect(cstToIst(cstBranch("many", [cstTagged("a", "abc")]))).toEqual([
       { a: "abc" }
     ]);
     expect(
-      cstToAst(
+      cstToIst(
         cstBranch("many", [
           "a",
           cstTagged("b", "123"),
@@ -454,7 +454,7 @@ describe("cstToAst", () => {
 
   it("joins nested many", () => {
     expect(
-      cstToAst(
+      cstToIst(
         cstBranch("many", [
           cstBranch("many", ["a"]),
           cstBranch("many", [null, "b", "c"])
@@ -465,7 +465,7 @@ describe("cstToAst", () => {
 
   it("keeps nested tagged sequences", () => {
     expect(
-      cstToAst(
+      cstToIst(
         cstBranch("many", [
           cstBranch("many", [cstTagged("a", "1"), "b"]),
           cstBranch("many", [cstTagged("d", "1"), cstTagged("d", "2")])
@@ -475,11 +475,11 @@ describe("cstToAst", () => {
   });
 
   it("converts tagged many", () => {
-    expect(cstToAst(cstTagged("ab", cstBranch("many", ["a", "b"])))).toEqual({
+    expect(cstToIst(cstTagged("ab", cstBranch("many", ["a", "b"])))).toEqual({
       ab: "ab"
     });
     expect(
-      cstToAst(
+      cstToIst(
         cstTagged(
           "hey",
           cstBranch("many", [cstTagged("a", "b"), cstTagged("a", "c")])
@@ -490,7 +490,7 @@ describe("cstToAst", () => {
 
   it("joins up nested sequences and many", () => {
     expect(
-      cstToAst(
+      cstToIst(
         cstBranch("seq", [
           cstBranch("many", ["a", "a"]),
           cstBranch("many", ["b", "b"]),
@@ -507,7 +507,7 @@ describe("cstToAst", () => {
 
   it("converts nested and tagged sequences and many", () => {
     expect(
-      cstToAst(
+      cstToIst(
         cstBranch("seq", [
           cstBranch("many", ["a", "a"]),
           cstBranch("many", [cstTagged("deep", "b")])
@@ -516,7 +516,7 @@ describe("cstToAst", () => {
     ).toEqual([{ deep: "b" }]);
 
     expect(
-      cstToAst(
+      cstToIst(
         cstBranch("seq", [
           cstBranch("many", ["a", "a"]),
           cstBranch("many", [cstTagged("deep", "b")]),
@@ -526,7 +526,7 @@ describe("cstToAst", () => {
     ).toEqual([{ deep: "b" }, { foo: "123" }]);
 
     expect(
-      cstToAst(
+      cstToIst(
         cstBranch("many", [
           cstBranch("seq", ["a", "b", cstTagged("last", "c")]),
           cstTagged("abc", cstBranch("many", [cstTagged("foo", "d")]))
