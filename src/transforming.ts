@@ -1,5 +1,7 @@
 import { CSTNode } from "./cst";
-import { ISTBranch, ISTCollection, ISTNode } from "./ist";
+import { ISTBranch, ISTSequence, ISTNode } from "./ist";
+
+const istBranchPrototype = {};
 
 /**
  * Transforms a {@link CSTNode | CST} into an {@link ISTNode | IST}.
@@ -16,34 +18,139 @@ import { ISTBranch, ISTCollection, ISTNode } from "./ist";
  * @see {@link ISTNode}
  */
 export function cstToIst(cst: CSTNode): ISTNode {
-  function isNotLeaf(node: ISTNode): node is ISTBranch | ISTCollection {
+  function isNotLeaf(node: ISTNode): node is ISTBranch | ISTSequence {
     return node !== null && typeof node === "object";
   }
 
-  function isCollection(node: ISTNode): node is ISTCollection {
+  function isSequence(node: ISTNode): node is ISTSequence {
     return Array.isArray(node);
   }
 
   function isBranch(node: ISTNode): node is ISTBranch {
-    return isNotLeaf(node) && !isCollection(node);
+    return isNotLeaf(node) && !isSequence(node);
   }
 
   if (typeof cst === "string" || cst === null) {
     return cst;
   } else if (cst.type === "tag") {
-    return { [cst.tag]: cstToIst(cst.child) };
+    const obj = Object.create(istBranchPrototype) as ISTBranch;
+    obj[cst.tag] = cstToIst(cst.child);
+    return obj;
   } else {
     const children = cst.children.map(cstToIst);
 
     const hasBranches = children.some(isBranch);
-    const hasCollections = children.some(isCollection);
+    const hasSequences = children.some(isSequence);
 
-    if (cst.type === "seq" && hasBranches && !hasCollections) {
-      return Object.assign({}, ...children.filter(isNotLeaf)) as ISTBranch;
-    } else if (hasBranches || hasCollections) {
+    if (cst.type === "seq" && hasBranches && !hasSequences) {
+      return Object.assign(
+        Object.create(istBranchPrototype),
+        ...children.filter(isNotLeaf)
+      ) as ISTBranch;
+    } else if (hasBranches || hasSequences) {
       return children.filter(isNotLeaf).flat();
     } else {
       return children.join("");
     }
   }
+}
+
+const patternBind = Symbol("patternBind");
+
+type PatternBinding = {
+  [patternBind]: (value: unknown) => string | null;
+};
+
+type Pattern =
+  | null
+  | string
+  | Pattern[]
+  | { [key: string]: Pattern }
+  | PatternBinding;
+
+type Transformer<T> = (bindings: Record<string, unknown>) => T;
+type Rule<T> = <U>(input: U) => T | U;
+
+export function rule<T>(
+  pattern: Pattern,
+  transformer: Transformer<T>
+): Rule<T> {
+  const bindings: Record<string, unknown> = {};
+
+  const isBinding = (p: Pattern): p is PatternBinding => {
+    return typeof p === "object" && p !== null && patternBind in p;
+  };
+
+  const isObject = (it: unknown): it is Record<string, unknown> => {
+    return typeof it === "object" && it !== null && !Array.isArray(it);
+  };
+
+  const deeplyEqual = (a: Pattern, b: unknown): boolean => {
+    if (isBinding(a)) {
+      const boundName = a[patternBind](b);
+      if (boundName) {
+        bindings[boundName] = b;
+        return true;
+      } else {
+        return false;
+      }
+    } else if (Array.isArray(a)) {
+      return (
+        Array.isArray(b) &&
+        a.length === b.length &&
+        a.every((av, i) => deeplyEqual(av, b[i]))
+      );
+    } else if (isObject(a)) {
+      const entries = Object.entries(a);
+
+      return (
+        isObject(b) &&
+        entries.length === Object.entries(b).length &&
+        entries.every(([key, value]) =>
+          key in b ? deeplyEqual(value, b[key]) : false
+        )
+      );
+    } else {
+      return a === b;
+    }
+  };
+
+  return input => (deeplyEqual(pattern, input) ? transformer(bindings) : input);
+}
+
+function isComplex(value: unknown): boolean {
+  return (
+    (value !== null && Object.getPrototypeOf(value) === istBranchPrototype) ||
+    Array.isArray(value)
+  );
+}
+
+export function bindLeaf(name: string): PatternBinding {
+  return {
+    [patternBind]: value => {
+      if (isComplex(value)) {
+        return null;
+      } else {
+        return name;
+      }
+    }
+  };
+}
+
+export function bindSequence(name: string): PatternBinding {
+  return {
+    [patternBind]: value => {
+      if (Array.isArray(value) && !value.some(isComplex)) {
+        return name;
+      } else {
+        return null;
+      }
+    }
+  };
+}
+
+export function bindAny(name: string): PatternBinding {
+  return {
+    [patternBind]: () => name
+  };
 }

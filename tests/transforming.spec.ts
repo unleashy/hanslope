@@ -1,4 +1,14 @@
-import { CSTMany, CSTNode, CSTSeq, CSTTagged, cstToIst } from "../src";
+import {
+  bindAny,
+  bindLeaf,
+  bindSequence,
+  CSTMany,
+  CSTNode,
+  CSTSeq,
+  CSTTagged,
+  cstToIst,
+  rule
+} from "../src";
 
 describe("cstToIst", () => {
   type CSTBranch = CSTSeq | CSTMany;
@@ -178,5 +188,142 @@ describe("cstToIst", () => {
         ])
       )
     ).toEqual([{ last: "c" }, { abc: [{ foo: "d" }] }]);
+  });
+});
+
+describe("rule", () => {
+  it("matches strings", () => {
+    const sut = rule("a", () => "b");
+
+    expect(sut("a")).toEqual("b");
+    expect(sut("c")).toEqual("c");
+  });
+
+  it("matches an empty object", () => {
+    const obj = {};
+    const sut = rule(obj, () => 123);
+
+    expect(sut(obj)).toEqual(123);
+    expect(sut({})).toEqual(123);
+    expect(sut({ a: "" })).toEqual({ a: "" });
+    expect(sut("")).toEqual("");
+    expect(sut([])).toEqual([]);
+    expect(sut(null)).toBeNull();
+  });
+
+  it("matches each key and value of objects", () => {
+    const sut = rule({ a: "a", b: { c: "" }, d: [] }, () => 456);
+
+    expect(sut({ a: "a", b: { c: "" }, d: [] })).toEqual(456);
+    expect(sut({ a: null, b: { c: "" }, d: [] })).toEqual({
+      a: null,
+      b: { c: "" },
+      d: []
+    });
+    expect(sut({ a: "a", b: { c: ["b"] }, d: [] })).toEqual({
+      a: "a",
+      b: { c: ["b"] },
+      d: []
+    });
+  });
+
+  it("matches empty arrays", () => {
+    const ary: never[] = [];
+    const sut = rule(ary, () => 789);
+
+    expect(sut(ary)).toEqual(789);
+    expect(sut([])).toEqual(789);
+    expect(sut([""])).toEqual([""]);
+    expect(sut("")).toEqual("");
+    expect(sut({})).toEqual({});
+    expect(sut(null)).toBeNull();
+  });
+
+  it("matches each element in arrays", () => {
+    const sut = rule(["a", null, ["b"], { foo: "bar" }], () => 1001);
+
+    expect(sut(["a", null, ["b"], { foo: "bar" }])).toEqual(1001);
+    expect(sut(["a", "null", ["b"], { foo: "bar" }])).toEqual([
+      "a",
+      "null",
+      ["b"],
+      { foo: "bar" }
+    ]);
+    expect(sut(["a", ["b", "c"]])).toEqual(["a", ["b", "c"]]);
+  });
+
+  describe("when `bindLeaf` is used", () => {
+    it("binds bindLeaf values", () => {
+      const sut = rule(bindLeaf("x"), ({ x }) => ({ foo: "bar", x }));
+
+      expect(sut(null)).toEqual({ foo: "bar", x: null });
+      expect(sut("a")).toEqual({ foo: "bar", x: "a" });
+      expect(sut({})).toEqual({ foo: "bar", x: {} });
+      expect(sut([])).toEqual([]);
+    });
+
+    it("does not bind IST branches", () => {
+      const sut = rule(bindLeaf("x"), ({ x }) => ({ foo: "bar", x }));
+      const ist = cstToIst({ type: "tag", tag: "", child: "" });
+
+      expect(sut(ist)).toBe(ist);
+    });
+
+    it("binds inside objects", () => {
+      const sut = rule({ a: bindLeaf("a"), b: bindLeaf("b") }, ({ a, b }) => ({
+        foo: "bar",
+        a,
+        b
+      }));
+
+      expect(sut({ a: "1", b: "2" })).toEqual({ foo: "bar", a: "1", b: "2" });
+      expect(sut({ a: "1" })).toEqual({ a: "1" });
+    });
+
+    it("binds inside arrays", () => {
+      const sut = rule([bindLeaf("a"), bindLeaf("b")], ({ a, b }) => ({
+        foo: "bar",
+        a,
+        b
+      }));
+
+      expect(sut(["1", "2"])).toEqual({ foo: "bar", a: "1", b: "2" });
+      expect(sut(["1"])).toEqual(["1"]);
+    });
+  });
+
+  describe("when `bindSequence` is used", () => {
+    it("binds sequences", () => {
+      const sut = rule(bindSequence("s"), ({ s }) => ({ foo: "bar", s }));
+
+      expect(sut([])).toEqual({ foo: "bar", s: [] });
+      expect(sut([1, 2, 3])).toEqual({ foo: "bar", s: [1, 2, 3] });
+      expect(sut(null)).toBeNull();
+      expect(sut("a")).toEqual("a");
+      expect(sut({})).toEqual({});
+    });
+
+    it("does not bind complex sequences", () => {
+      const sut = rule(bindSequence("s"), ({ s }) => ({ foo: "bar", s }));
+
+      expect(sut([[]])).toEqual([[]]);
+
+      const ist = cstToIst({ type: "tag", tag: "", child: "" });
+      expect(sut([ist])).toEqual([ist]);
+    });
+  });
+
+  describe("when `bindAny` is used", () => {
+    it("binds anything", () => {
+      const sut = rule(bindAny("baz"), ({ baz }) => ({ foo: "bar", baz }));
+
+      expect(sut(null)).toEqual({ foo: "bar", baz: null });
+      expect(sut("a")).toEqual({ foo: "bar", baz: "a" });
+      expect(sut({})).toEqual({ foo: "bar", baz: {} });
+      expect(sut([])).toEqual({ foo: "bar", baz: [] });
+
+      const ist = cstToIst({ type: "tag", tag: "", child: "" });
+      expect(sut(ist)).toEqual({ foo: "bar", baz: ist });
+    });
   });
 });
