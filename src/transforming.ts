@@ -1,5 +1,5 @@
 import { CSTNode } from "./cst";
-import { ISTBranch, ISTSequence, ISTNode } from "./ist";
+import { ISTBranch, ISTNode, ISTSequence } from "./ist";
 
 const istBranchPrototype = {};
 
@@ -62,8 +62,7 @@ type PatternBinding = {
 };
 
 type Pattern =
-  | null
-  | string
+  | unknown
   | Pattern[]
   | { [key: string]: Pattern }
   | PatternBinding;
@@ -153,4 +152,37 @@ export function bindAny(name: string): PatternBinding {
   return {
     [patternBind]: () => name
   };
+}
+
+type ISTTransformer<T = unknown> = (input: ISTNode) => T;
+
+export function istTransformer<T = unknown>(
+  ...rules: [Rule<unknown>, ...Rule<unknown>[]]
+): ISTTransformer<T> {
+  const applyRules = (node: unknown): unknown => {
+    for (const rule of rules) {
+      const newNode = rule(node);
+      if (newNode !== node) {
+        return newNode;
+      }
+    }
+
+    return node;
+  };
+
+  const transform = (node: unknown): unknown => {
+    if (Array.isArray(node)) {
+      return applyRules(node.map(it => transform(it)));
+    } else if (typeof node === "object" && node !== null) {
+      return applyRules(
+        Object.fromEntries(
+          Object.entries(node).map(([key, value]) => [key, transform(value)])
+        )
+      );
+    } else {
+      return applyRules(node);
+    }
+  };
+
+  return transform as ISTTransformer<T>;
 }

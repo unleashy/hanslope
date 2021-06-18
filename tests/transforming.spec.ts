@@ -7,23 +7,24 @@ import {
   CSTSeq,
   CSTTagged,
   cstToIst,
+  istTransformer,
   rule
 } from "../src";
 
+type CSTBranch = CSTSeq | CSTMany;
+
+function cstBranch<Type extends "seq" | "many">(
+  type: Type,
+  children: Extract<CSTBranch, { type: Type }>["children"]
+) {
+  return { type, children } as Extract<CSTBranch, { type: Type }>;
+}
+
+function cstTagged(tag: string, child: CSTNode): CSTTagged {
+  return { type: "tag", tag, child };
+}
+
 describe("cstToIst", () => {
-  type CSTBranch = CSTSeq | CSTMany;
-
-  function cstBranch<Type extends "seq" | "many">(
-    type: Type,
-    children: Extract<CSTBranch, { type: Type }>["children"]
-  ) {
-    return { type, children } as Extract<CSTBranch, { type: Type }>;
-  }
-
-  function cstTagged(tag: string, child: CSTNode): CSTTagged {
-    return { type: "tag", tag, child };
-  }
-
   it("maintains leaves", () => {
     expect(cstToIst("a")).toEqual("a");
     expect(cstToIst(null)).toBeNull();
@@ -324,6 +325,40 @@ describe("rule", () => {
 
       const ist = cstToIst({ type: "tag", tag: "", child: "" });
       expect(sut(ist)).toEqual({ foo: "bar", baz: ist });
+    });
+  });
+});
+
+describe("istTransformer", () => {
+  describe("given one rule", () => {
+    it("applies the rule on an IST recursively", () => {
+      const sut = istTransformer(rule("a", () => "b"));
+
+      expect(sut(cstToIst("a"))).toEqual("b");
+      expect(sut(cstToIst(cstTagged("foo", "a")))).toEqual({ foo: "b" });
+      expect(
+        sut(
+          cstToIst(
+            cstBranch("many", [
+              cstTagged("foo", "a"),
+              cstTagged("foo", "c"),
+              cstTagged("foo", null)
+            ])
+          )
+        )
+      ).toEqual([{ foo: "b" }, { foo: "c" }, { foo: null }]);
+    });
+  });
+
+  describe("given multiple rules", () => {
+    it("tries each rule in order", () => {
+      const sut = istTransformer(
+        rule("a", () => 1),
+        rule({ foo: 1 }, () => 2)
+      );
+
+      expect(sut(cstToIst("a"))).toEqual(1);
+      expect(sut(cstToIst(cstTagged("foo", "a")))).toEqual(2);
     });
   });
 });
