@@ -226,6 +226,11 @@ describe("rule", () => {
       b: { c: ["b"] },
       d: []
     });
+    expect(sut({ a: "a", b: { c: "" }, what: 1 })).toEqual({
+      a: "a",
+      b: { c: "" },
+      what: 1
+    });
   });
 
   it("matches empty arrays", () => {
