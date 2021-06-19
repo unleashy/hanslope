@@ -36,6 +36,8 @@ export function cstToIst(cst: CSTNode): ISTNode {
     const obj = Object.create(istBranchPrototype) as ISTBranch;
     obj[cst.tag] = cstToIst(cst.child);
     return obj;
+  } else if (cst.type === "many" && cst.children.length === 0) {
+    return [];
   } else {
     const children = cst.children.map(cstToIst);
 

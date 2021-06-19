@@ -86,7 +86,7 @@ describe("cstToIst", () => {
   });
 
   it("joins many of leaves", () => {
-    expect(cstToIst(cstBranch("many", []))).toEqual("");
+    expect(cstToIst(cstBranch("many", []))).toEqual([]);
     expect(cstToIst(cstBranch("many", ["a"]))).toEqual("a");
     expect(cstToIst(cstBranch("many", ["a", "b"]))).toEqual("ab");
     expect(cstToIst(cstBranch("many", ["a", null, "c"]))).toEqual("ac");
@@ -189,6 +189,12 @@ describe("cstToIst", () => {
         ])
       )
     ).toEqual([{ last: "c" }, { abc: [{ foo: "d" }] }]);
+
+    expect(
+      cstToIst(
+        cstBranch("seq", [cstTagged("foo", "bar"), cstBranch("many", [])])
+      )
+    ).toEqual([{ foo: "bar" }]);
   });
 });
 
