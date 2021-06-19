@@ -67,13 +67,13 @@ type Pattern =
   | { [key: string]: Pattern }
   | PatternBinding;
 
-type Transformer<T> = (bindings: Record<string, unknown>) => T;
+type Transformer<T extends Record<string, unknown>, R> = (bindings: T) => R;
 type Rule<T> = <U>(input: U) => T | U;
 
-export function rule<T>(
+export function rule<T extends Record<string, unknown>, R = unknown>(
   pattern: Pattern,
-  transformer: Transformer<T>
-): Rule<T> {
+  transformer: Transformer<T, R>
+): Rule<R> {
   const bindings: Record<string, unknown> = {};
 
   const isBinding = (p: Pattern): p is PatternBinding => {
@@ -114,7 +114,8 @@ export function rule<T>(
     }
   };
 
-  return input => (deeplyEqual(pattern, input) ? transformer(bindings) : input);
+  return input =>
+    deeplyEqual(pattern, input) ? transformer(bindings as T) : input;
 }
 
 function isComplex(value: unknown): boolean {
