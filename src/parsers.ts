@@ -74,8 +74,8 @@ export const any: Parser<string> = input => {
   }
 };
 
-/** Options for {@link str} */
-export interface StrOptions {
+/** Options for {@link str} and {@link re}. */
+export interface TrimOptions {
   /**
    * Whether or not to trim leading whitespace before matching
    * @defaultValue true
@@ -87,7 +87,7 @@ export interface StrOptions {
  * Matches a string.
  *
  * @remarks
- * By default, this will trim leading whitespace. Use {@link StrOptions.trim} to
+ * By default, this will trim leading whitespace. Use {@link TrimOptions.trim} to
  * configure this.
  *
  * @example
@@ -99,10 +99,10 @@ export interface StrOptions {
  * abc("def");      // fails
  * ```
  * @param s - the string to match against
- * @param options - {@link StrOptions | optional parser options}
+ * @param options - {@link TrimOptions | optional parser options}
  * @returns a parser outputting the same string given
  */
-export function str(s: string, options?: StrOptions): Parser<string> {
+export function str(s: string, options?: TrimOptions): Parser<string> {
   const finalOpts = { trim: true, ...options };
   return input => {
     const finalInput = finalOpts.trim ? input.trimStart() : input;
@@ -115,10 +115,12 @@ export function str(s: string, options?: StrOptions): Parser<string> {
 }
 
 /**
- * Matches a {@link RegExp} pattern, trimming leading whitespace.
+ * Matches a {@link RegExp} pattern.
  *
  * @remarks
- * This only ever matches if the pattern matches the start of the string.
+ * This only ever matches if the pattern matches the start of the string. Also,
+ * by default, this will trim leading whitespace. Use {@link TrimOptions.trim}
+ * to configure this.
  *
  * @example
  * ```
@@ -130,15 +132,17 @@ export function str(s: string, options?: StrOptions): Parser<string> {
  * digits("abc123"); // fails
  * ```
  * @param pattern - the pattern to match against
+ * @param options - {@link TrimOptions | optional parser options}
  * @returns a parser outputting the matched string
  */
-export function re(pattern: RegExp): Parser<string> {
+export function re(pattern: RegExp, options?: TrimOptions): Parser<string> {
+  const finalOpts = { trim: true, ...options };
   return input => {
-    const trimmed = input.trimStart();
-    const result = pattern.exec(trimmed);
+    const finalInput = finalOpts.trim ? input.trimStart() : input;
+    const result = pattern.exec(finalInput);
     if (result?.index === 0) {
       const match = result[0] as string;
-      return matched(match, trimmed.slice(match.length));
+      return matched(match, finalInput.slice(match.length));
     } else {
       return notMatched();
     }
