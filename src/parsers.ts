@@ -33,6 +33,11 @@ export interface NotMatched {
   readonly matched: false;
 
   /**
+   * The rest of the input after the parse was done.
+   */
+  readonly rest: string;
+
+  /**
    * A failure label, used to distinguish from explicit failures thrown by
    * {@link fail} and implicit failures that may backtrack, in which case this
    * is `null`.
@@ -41,8 +46,11 @@ export interface NotMatched {
 }
 
 /** @internal */
-export function notMatched(label: string | null = null): NotMatched {
-  return { matched: false, label };
+export function notMatched(
+  rest: string,
+  label: string | null = null
+): NotMatched {
+  return { matched: false, rest, label };
 }
 
 /**
@@ -70,7 +78,7 @@ export const any: Parser<string> = input => {
   if (input.length > 0) {
     return matched(input[0] as string, input.slice(1));
   } else {
-    return notMatched();
+    return notMatched(input);
   }
 };
 
@@ -109,7 +117,7 @@ export function str(s: string, options?: TrimOptions): Parser<string> {
     if (finalInput.startsWith(s)) {
       return matched(s, finalInput.slice(s.length));
     } else {
-      return notMatched();
+      return notMatched(input);
     }
   };
 }
@@ -144,7 +152,7 @@ export function re(pattern: RegExp, options?: TrimOptions): Parser<string> {
       const match = result[0] as string;
       return matched(match, finalInput.slice(match.length));
     } else {
-      return notMatched();
+      return notMatched(input);
     }
   };
 }
@@ -177,14 +185,22 @@ export function or<Ps extends TwoOrMoreParsers>(
   ...parsers: Ps
 ): Parser<CSTNode> {
   return input => {
+    const failures: NotMatched[] = [];
+
     for (const parser of parsers) {
       const result = parser(input);
       if (result.matched || result.label !== null) {
         return result;
+      } else {
+        failures.push(result);
       }
     }
 
-    return notMatched();
+    return findFurthestFailure(failures);
+
+    function findFurthestFailure(arr: NotMatched[]): NotMatched {
+      return arr.reduce((a, b) => (a.rest.length <= b.rest.length ? a : b));
+    }
   };
 }
 
@@ -299,7 +315,7 @@ export function many1<T extends CSTNode>(parser: Parser<T>): Parser<CSTMany> {
     ) {
       return result;
     } else {
-      return notMatched();
+      return notMatched(input);
     }
   };
 }
@@ -352,7 +368,7 @@ export function not(parser: Parser<CSTNode>): Parser<null> {
   return input => {
     const result = parser(input);
     if (result.matched) {
-      return notMatched();
+      return notMatched(input);
     } else if (result.label !== null) {
       return result;
     } else {
@@ -401,7 +417,7 @@ export function tag<T extends CSTNode>(
  * @returns a parser that always fails
  */
 export function fail(label: string): (input: string) => NotMatched {
-  return () => notMatched(label);
+  return (input: string) => notMatched(input, label);
 }
 
 /**
@@ -421,5 +437,12 @@ export function labelFail<T extends CSTNode>(
   parser: Parser<T>,
   label: string
 ): Parser<T> {
-  return or(parser, fail(label)) as Parser<T>;
+  return input => {
+    const result = parser(input);
+    if (result.matched || result.label !== null) {
+      return result;
+    } else {
+      return notMatched(result.rest, label);
+    }
+  };
 }

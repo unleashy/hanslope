@@ -23,7 +23,7 @@ describe("any", () => {
   });
 
   it("fails if the input is empty", () => {
-    expect(any("")).toEqual(notMatched());
+    expect(any("")).toEqual(notMatched(""));
   });
 });
 
@@ -49,7 +49,7 @@ describe("str", () => {
       const sut = str("abc");
 
       expect(sut("abc")).toEqual(matched("abc", ""));
-      expect(sut("def")).toEqual(notMatched());
+      expect(sut("def")).toEqual(notMatched("def"));
       expect(sut("abcdef")).toEqual(matched("abc", "def"));
     });
 
@@ -66,7 +66,7 @@ describe("str", () => {
       const sut = str("hey", { trim: false });
 
       expect(sut("hey")).toEqual(matched("hey", ""));
-      expect(sut(" \f\t\r\n\vhey")).toEqual(notMatched());
+      expect(sut(" \f\t\r\n\vhey")).toEqual(notMatched(" \f\t\r\n\vhey"));
     });
   });
 });
@@ -77,7 +77,7 @@ describe("re", () => {
       const sut = re(/[a-z]+[0-9]{3}/);
 
       expect(sut("abc123456")).toEqual(matched("abc123", "456"));
-      expect(sut("nope")).toEqual(notMatched());
+      expect(sut("nope")).toEqual(notMatched("nope"));
     });
 
     it("trims leading whitespace", () => {
@@ -93,7 +93,7 @@ describe("re", () => {
       const sut = re(/yep/, { trim: false });
 
       expect(sut("yep")).toEqual(matched("yep", ""));
-      expect(sut(" \f\t\r\n\vyep")).toEqual(notMatched());
+      expect(sut(" \f\t\r\n\vyep")).toEqual(notMatched(" \f\t\r\n\vyep"));
     });
   });
 });
@@ -104,7 +104,7 @@ describe("or", () => {
       const calls: string[] = [];
       const p1: Parser<string> = () => {
         calls.push("p1");
-        return notMatched();
+        return notMatched("abc");
       };
       const p2: Parser<string> = input => {
         calls.push("p2");
@@ -116,18 +116,22 @@ describe("or", () => {
       expect(calls).toEqual(["p1", "p2"]);
     });
 
-    it("fails if all parsers fail", () => {
-      const failingP: Parser<string> = () => notMatched();
-      const sut = or(failingP, failingP, failingP, failingP);
+    it("fails with the furthest failure if all parsers fail", () => {
+      const sut = or(
+        () => notMatched("a"),
+        () => notMatched("ab"),
+        () => notMatched("b"),
+        () => notMatched("abc")
+      );
 
-      expect(sut("")).toEqual(notMatched());
+      expect(sut("")).toEqual(notMatched("a"));
     });
 
     it("immediately propagates labelled failures", () => {
       const calls: string[] = [];
       const failingP: Parser<null> = () => {
         calls.push("failingP");
-        return notMatched("woops");
+        return notMatched("abc", "woops");
       };
       const matchingP: Parser<string> = input => {
         calls.push("matchingP");
@@ -135,7 +139,7 @@ describe("or", () => {
       };
       const sut = or(failingP, matchingP);
 
-      expect(sut("")).toEqual(notMatched("woops"));
+      expect(sut("")).toEqual(notMatched("abc", "woops"));
       expect(calls).toEqual(["failingP"]);
     });
   });
@@ -161,11 +165,11 @@ describe("seq", () => {
       };
       const failingP: Parser<string> = () => {
         calls.push("failingP");
-        return notMatched();
+        return notMatched("abc");
       };
       const sut = seq(matchingP, failingP, matchingP);
 
-      expect(sut("")).toEqual(notMatched());
+      expect(sut("")).toEqual(notMatched("abc"));
       expect(calls).toEqual(["matchingP", "failingP"]);
     });
 
@@ -173,7 +177,7 @@ describe("seq", () => {
       const calls: string[] = [];
       const failingP: Parser<null> = () => {
         calls.push("failingP");
-        return notMatched("woops");
+        return notMatched("def", "woops");
       };
       const matchingP: Parser<string> = input => {
         calls.push("matchingP");
@@ -181,7 +185,7 @@ describe("seq", () => {
       };
       const sut = seq(failingP, matchingP);
 
-      expect(sut("")).toEqual(notMatched("woops"));
+      expect(sut("")).toEqual(notMatched("def", "woops"));
       expect(calls).toEqual(["failingP"]);
     });
   });
@@ -195,7 +199,7 @@ describe("many", () => {
         calls.push(input);
         return input.length > 0
           ? matched(input[0] ?? "", input.slice(1))
-          : notMatched();
+          : notMatched("foo");
       };
       const sut = many(p);
 
@@ -206,7 +210,7 @@ describe("many", () => {
     });
 
     it("succeeds even if the first match fails", () => {
-      const p: Parser<string> = () => notMatched();
+      const p: Parser<string> = () => notMatched("foo");
       const sut = many(p);
 
       expect(sut("abc")).toEqual(
@@ -215,10 +219,10 @@ describe("many", () => {
     });
 
     it("immediately propagates labelled failures", () => {
-      const failingP: Parser<null> = () => notMatched("woops");
+      const failingP: Parser<null> = () => notMatched("foo", "woops");
       const sut = many(failingP);
 
-      expect(sut("")).toEqual(notMatched("woops"));
+      expect(sut("")).toEqual(notMatched("foo", "woops"));
     });
   });
 });
@@ -231,7 +235,7 @@ describe("many1", () => {
         calls.push(input);
         return input.length > 0
           ? matched(input[0] ?? "", input.slice(1))
-          : notMatched();
+          : notMatched("foo");
       };
       const sut = many1(p);
 
@@ -242,17 +246,17 @@ describe("many1", () => {
     });
 
     it("fails if there are no matches", () => {
-      const p: Parser<string> = () => notMatched();
+      const p: Parser<string> = () => notMatched("foo");
       const sut = many1(p);
 
-      expect(sut("abc")).toEqual(notMatched());
+      expect(sut("abc")).toEqual(notMatched("abc"));
     });
 
     it("immediately propagates labelled failures", () => {
-      const failingP: Parser<null> = () => notMatched("woops");
+      const failingP: Parser<null> = () => notMatched("foo", "woops");
       const sut = many1(failingP);
 
-      expect(sut("")).toEqual(notMatched("woops"));
+      expect(sut("")).toEqual(notMatched("foo", "woops"));
     });
   });
 });
@@ -261,7 +265,9 @@ describe("maybe", () => {
   describe("given a parser", () => {
     it("optionally matches", () => {
       const p: Parser<string> = input =>
-        input.length === 1 ? matched("hello", input.slice(1)) : notMatched();
+        input.length === 1
+          ? matched("hello", input.slice(1))
+          : notMatched("foo");
       const sut = maybe(p);
 
       expect(sut("a")).toEqual(matched("hello", ""));
@@ -269,10 +275,10 @@ describe("maybe", () => {
     });
 
     it("immediately propagates labelled failures", () => {
-      const failingP: Parser<null> = () => notMatched("woops");
+      const failingP: Parser<null> = () => notMatched("foo", "woops");
       const sut = maybe(failingP);
 
-      expect(sut("")).toEqual(notMatched("woops"));
+      expect(sut("")).toEqual(notMatched("foo", "woops"));
     });
   });
 });
@@ -280,7 +286,7 @@ describe("maybe", () => {
 describe("not", () => {
   describe("given a parser", () => {
     it("matches if it fails, keeping the input intact", () => {
-      const p: Parser<string> = () => notMatched();
+      const p: Parser<string> = () => notMatched("foo");
       const sut = not(p);
 
       expect(sut("abc")).toEqual(matched(null, "abc"));
@@ -290,14 +296,14 @@ describe("not", () => {
       const p: Parser<string> = () => matched("abc", "def");
       const sut = not(p);
 
-      expect(sut("abc")).toEqual(notMatched());
+      expect(sut("abc")).toEqual(notMatched("abc"));
     });
 
     it("immediately propagates labelled failures", () => {
-      const failingP: Parser<null> = () => notMatched("woops");
+      const failingP: Parser<null> = () => notMatched("foo", "woops");
       const sut = not(failingP);
 
-      expect(sut("")).toEqual(notMatched("woops"));
+      expect(sut("")).toEqual(notMatched("foo", "woops"));
     });
   });
 });
@@ -314,17 +320,17 @@ describe("tag", () => {
     });
 
     it("does not tag failures", () => {
-      const p: Parser<string> = () => notMatched();
+      const p: Parser<string> = () => notMatched("foo");
       const sut = tag("hello", p);
 
-      expect(sut("123")).toEqual(notMatched());
+      expect(sut("123")).toEqual(notMatched("foo"));
     });
 
     it("immediately propagates labelled failures", () => {
-      const failingP: Parser<null> = () => notMatched("woops");
+      const failingP: Parser<null> = () => notMatched("foo", "woops");
       const sut = tag("", failingP);
 
-      expect(sut("")).toEqual(notMatched("woops"));
+      expect(sut("")).toEqual(notMatched("foo", "woops"));
     });
   });
 });
@@ -334,7 +340,7 @@ describe("fail", () => {
     it("fails using it", () => {
       const sut = fail("abc");
 
-      expect(sut("def")).toEqual(notMatched("abc"));
+      expect(sut("def")).toEqual(notMatched("def", "abc"));
     });
   });
 });
@@ -343,18 +349,18 @@ describe("labelFail", () => {
   describe("given a parser and a label", () => {
     it("uses the label if the parser fails", () => {
       const p: Parser<string> = input =>
-        input === "ok" ? matched("ok", input) : notMatched();
+        input === "ok" ? matched("ok", input) : notMatched("foo");
       const sut = labelFail(p, "rip");
 
       expect(sut("ok")).toEqual(matched("ok", "ok"));
-      expect(sut("nope")).toEqual(notMatched("rip"));
+      expect(sut("nope")).toEqual(notMatched("foo", "rip"));
     });
 
     it("immediately propagates labelled failures", () => {
-      const failingP: Parser<null> = () => notMatched("woops");
+      const failingP: Parser<null> = () => notMatched("foo", "woops");
       const sut = labelFail(failingP, "not used!");
 
-      expect(sut("")).toEqual(notMatched("woops"));
+      expect(sut("")).toEqual(notMatched("foo", "woops"));
     });
   });
 });
