@@ -118,8 +118,8 @@ describe("or", () => {
 
     it("fails with the furthest failure if all parsers fail", () => {
       const sut = or(
-        () => notMatched("a"),
         () => notMatched("ab"),
+        () => notMatched("a"),
         () => notMatched("b"),
         () => notMatched("abc")
       );

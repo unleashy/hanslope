@@ -15,5 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `failLabel(parser, label)` is a shortcut for `or(parser, fail(label))`
 - `cstToIst` transforms a CST to an IST
 - `istTransformer` uses `rule`s to transform your IST into a real AST
+- `parseGrammar` parses a textual grammar into an AST
 
 [unreleased]: https://github.com/unleashy/vahv/compare/v0.1.0...HEAD
